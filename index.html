@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>System Design Sandbox VR</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b1020; color: #e8ecf8; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+    #app { position: fixed; inset: 0; }
+    #hud { position: fixed; top: 10px; left: 10px; max-width: 320px; background: rgba(11,16,32,.82); border: 1px solid #2a3560; border-radius: 10px; padding: 10px 12px; z-index: 5; }
+    #hud h1 { font-size: 15px; margin: 0 0 6px; }
+    #hud button { background: #26346b; color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; margin: 2px 2px 2px 0; cursor: pointer; font: inherit; }
+    #hud button:hover, #hud button.on { background: #3d55b8; }
+    #hud small { display: block; color: #9aa6d0; margin-top: 6px; }
+    #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #1c2550; padding: 8px 14px; border-radius: 8px; z-index: 5; display: none; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="hud">
+    <h1>System Design Sandbox</h1>
+    <div id="levels"></div>
+    <div><button id="enter-vr" hidden>Enter VR</button><button id="play">Play (Space)</button><button id="reset">Reset (R)</button></div>
+    <small>Desktop: drag from the shelf to place, drag from a node's right dot to wire, drag a wire's middle to cut it, click a cache to change its policy, drop nodes on the bin to delete. Keys: Space play/stop, H hint, R reset, N next level, 1-5 pick level. In VR: pinch instead of click.</small>
+  </div>
+  <div id="toast"></div>
+  <noscript>This experience needs JavaScript.</noscript>
+  <script type="module" src="/src/xr/main.ts"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 // Steady-state analysis: cheap, deterministic estimate used for hints and wire-load labels.
 // The discrete simulator (simulator.ts) is the source of truth for verdicts.
 import type { Design, Node, Workload } from "./model.js";
-import { outEdges, steady } from "./model.js";
+import { isQueueKind, outEdges, steady } from "./model.js";
 import { Zipf } from "./rng.js";
 import { validate } from "./validate.js";
 
@@ -33,11 +33,15 @@ export function analyse(design: Design, load: number | Workload): Result {
     const outs = outEdges(design, id);
     if (!outs.length) return;
     if (n.kind === "cache") reads *= 1 - cacheHitRate(n, w);
+    if (n.kind === "cdn") reads -= reads * (w.staticFraction ?? 0) * (n.staticHit ?? 0.95) / Math.max(1e-9, 1 - w.writeFraction);
+    if (n.kind === "limiter" && w.abuseFraction) { const legit = 1 - w.abuseFraction; const k = Math.min(1, (legit + 0.06) / 1); reads *= k; writes *= k; }
     const cap = n.capacityRps;
     const total = reads + writes;
     if (total > cap) { const k = cap / total; reads *= k; writes *= k; } // excess is shed here
-    const qs = outs.filter((o) => byId.get(o)!.kind === "queue"), nq = outs.filter((o) => byId.get(o)!.kind !== "queue");
-    const rTargets = nq.length ? nq : outs, wTargets = qs.length ? qs : outs;
+    const qs = outs.filter((o) => isQueueKind(byId.get(o)!.kind));
+    const nq = outs.filter((o) => !isQueueKind(byId.get(o)!.kind) && byId.get(o)!.kind !== "worker");
+    const rTargets = nq.length ? nq : outs;
+    const wTargets = qs.length ? qs : outs.filter((o) => byId.get(o)!.kind !== "replica").length ? outs.filter((o) => byId.get(o)!.kind !== "replica") : outs;
     for (const t of rTargets) visit(t, reads / rTargets.length, 0);
     for (const t of wTargets) visit(t, 0, writes / wTargets.length);
   };
@@ -49,7 +53,7 @@ export function analyse(design: Design, load: number | Workload): Result {
     const n = byId.get(id)!;
     const u = load / n.capacityRps;
     const overloaded = u > 1;
-    if (overloaded && n.kind !== "queue") dropped = Math.max(dropped, (load - n.capacityRps) / clientRps);
+    if (overloaded && !isQueueKind(n.kind)) dropped = Math.max(dropped, (load - n.capacityRps) / clientRps);
     const lat = overloaded ? n.latencyMs * 50 : n.latencyMs / (1 - Math.min(u, 0.99));
     nodes[id] = { id, rps: load, utilisation: u, latencyMs: lat, overloaded };
   }
@@ -77,7 +81,9 @@ export function hintsFor(d: Design, s: Record<string, { overloaded: boolean }>):
     if (n.kind === "api") h.push(has("lb")
       ? `${n.id} can't keep up. Add another API server behind the load balancer.`
       : `${n.id} can't keep up. Add more API servers behind a load balancer.`);
-    if (n.kind === "queue") h.push(`${n.id} is filling faster than it drains. Reduce write load on the database or enlarge the buffer.`);
+    if (n.kind === "queue" || n.kind === "broker") h.push(`${n.id} is filling faster than it drains. Reduce write load on the database or enlarge the buffer.`);
+    if (n.kind === "worker") h.push(`${n.id} is the slow step. Add more workers behind the broker so jobs drain faster.`);
+    if (n.kind === "replica") h.push(`${n.id} is saturated. Add another replica, or put a cache in front.`);
     if (n.kind === "cache") h.push(`${n.id} is saturated. Split traffic across more caches.`);
     if (n.kind === "lb") h.push(`${n.id} is saturated. Add a second balancer tier.`);
   }

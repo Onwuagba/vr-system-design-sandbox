@@ -7,6 +7,6 @@ export default defineConfig({
   // Injects the Meta IWER WebXR emulator on localhost only (never in the production build,
   // never on Quest Browser), so desktop dev has a simulated headset with hands.
   plugins: [injectIWER({ device: "metaQuest3", activation: "localhost", userAgentException: /OculusBrowser/ })],
-  build: { target: "es2022", chunkSizeWarningLimit: 4000 },
+  build: { target: "es2022", chunkSizeWarningLimit: 900 },
   server: { host: true, port: 5173 },
 });

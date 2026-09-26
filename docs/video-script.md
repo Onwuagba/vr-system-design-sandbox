@@ -1,22 +1,36 @@
-# Demo video script (target 2:30, under 3:00)
+# Demo video script (3:00 hard cap, target 2:50)
 
-Record in the Meta XR Simulator / IWER emulator for the clean capture, then 20 seconds of real
-headset footage (seated, hands only) for the final "it is real" shot. Keep the board in frame.
+**The moment the video is built around:** Level 3, the database turns red, you reach out, pinch a cache off the
+shelf, wire it in by hand, press Play again, and the database turns green. Everything else supports that beat.
+
+Capture plan: record the headset for the hero shots (seated, hands only, board in frame). If a headset is not
+available for the whole take, record the Meta XR Simulator / IWER emulator or the desktop fallback and say so
+in the voice-over. Do not present emulator footage as headset footage. Captions on: judges often watch muted.
 
 | Time | Visual | Voice-over |
 |---|---|---|
-| 0:00 | Black. A single request dot travels. Cut to the board. | "Every app you use is a chain of servers, and most people never see it fall over." |
-| 0:10 | Level 1: pinch API and database from the shelf, drag a wire from the Users dot. Press Play: 700 requests a second, the API server turns red and pulses. | "Here is launch day. One server, and it is drowning. You can see it, and the hint tells you why." |
-| 0:35 | Level 2: pinch a load balancer, add a second API server, wire them. Play. Particles split across two green servers. | "Add a load balancer and the traffic spreads. No slides, no jargon, just wires and consequences." |
-| 1:00 | Level 3: database goes red. Pinch a cache, wire it in front. Tap the cache to switch LRU to LFU; hit rate readout climbs. | "Popular reads hit a cache instead of the database. Try eviction policies and watch the hit rate change." |
-| 1:30 | Level 4: spike. Orange write particles pile up in a queue, backlog counter climbs then drains, database stays green. | "A flash sale triples traffic. A queue absorbs the spike and the database catches up at its own pace." |
-| 1:55 | Results overlay: stars, p50 and p99, then the design review text. | "At the end you get p50 and p99 latency, a star rating, and a review of your design. It works offline; plug in an LLM for a richer critique." |
-| 2:15 | Level 5 sandbox: build something big, hand pinch wiring in real headset footage. | "Fully hand tracked, seated, five to ten minutes a level. Learn system design by building it." |
-| 2:30 | Title card: System Design Sandbox, Productivity track, GitHub link. | "System Design Sandbox VR." |
+| 0:00 | Black. One request dot travels along a wire, then the whole board fades in. | "Every app you use is a chain of servers, and most people never get to see one fall over." |
+| 0:08 | Title card, then Level 1 in the headset: pinch-drag Users to API to DB. Press Play. The API turns red and pulses, a sound plays, a puff of red sparks. Coach panel: "One server can only do 400 requests a second." | "This is System Design Sandbox. You build the backend with your hands. One server, launch day, and it is drowning. You can see it, hear it, and the coach tells you why." |
+| 0:30 | Quick cut: Level 2, drop a load balancer, add a second API, particles split across two green servers. | "Add a load balancer and the traffic spreads. No slides, no jargon. Wires and consequences." |
+| 0:45 | **Level 3, the hero shot.** Play: the database turns red, red-alarm sound. Pause on it for a full second. | "Level three. A thousand reads a second and the database is melting." |
+| 0:55 | Hand pinches a CACHE off the shelf, drops it between the APIs and the database, wires three APIs to it and the cache to the database, taps the red dots to cut the old wires. | "Most of those reads ask for the same popular items. So I put a cache in front. By hand." |
+| 1:15 | Press Play. The database stays green, hit-rate readout climbs to about 80%, confetti, three stars, chord. | "Watch: the database goes green. The cache answers four out of five reads from memory." |
+| 1:25 | Results panel, "What happened": "db was the first to break at 0s..., peaked at 358% of capacity"; then the cache line "answered 80% of reads". Tap the cache to switch LRU to LFU. | "And it tells me what happened, in numbers: what broke first, by how much, and what fixed it. Tap the cache to change how it forgets things." |
+| 1:40 | Campaign map: Black Friday, viral post, thundering herd, read replicas, failover, sharding, CDN, rate limiter, async jobs. Fast montage, one second each, showing red then green. | "Thirteen real scenarios. A viral post, a cache stampede, a database that dies at three in the morning. Every level has more than one right answer, and stars for doing it cheaply." |
+| 1:55 | Level 9, failover: database node goes grey and says DOWN, then a replica flashes green and says PRIMARY. | "Break things on purpose. Kill the database and watch a replica get promoted." |
+| 2:10 | Sandbox: raise the load slider, hit BURST, tap a server to kill it, traffic reroutes. | "Sandbox mode has a load generator and failure injection. Turn the traffic up. Kill a server. Learn what your design does about it." |
+| 2:25 | Menu: Daily challenge, glossary entry for p99, share dialog with the design image; then comfort settings (left hand, large targets, reduced motion, seat height). | "A new puzzle every day, a glossary that explains p99 and eviction in plain words, share your design as a link or an image. Left or right hand, seated, large targets, reduced motion." |
+| 2:42 | Desktop browser, mouse dragging a node for two seconds, then title card with the GitHub link. | "It also runs in a plain browser tab, and it starts in a couple of seconds. System Design Sandbox VR." |
 
 ## Shot checklist
-- Show the red overload state and the on-board hint in at least two levels.
-- Show one refused wire (for example Database to API) so the validation is visible.
-- Show the desktop fallback for two seconds, mouse dragging a node, to prove it runs without a headset.
-- Captions on: judges often watch muted.
-- Say plainly which parts are simulated (traffic is a model, not real servers).
+- Show the red overload state and the coach hint in at least two levels.
+- Show one refused wire (for example Database to API) so validation is visible.
+- Show the Level 3 fix in one continuous take, no cuts between "red" and "green".
+- Show the results panel long enough to read the "What happened" lines.
+- Say plainly which parts are simulated: traffic is a model of real systems, not a real load test.
+- If any footage is from the emulator or desktop, put "emulator" or "desktop" in a corner caption.
+
+## What must be true before recording
+- Headset hand tracking and controller haptics have **not** been verified by the developer at time of writing.
+  Run through Level 3 on the headset once first. If pinch wiring feels off, record on controllers instead.
+- Sound is synthesised with WebAudio and starts after the first pinch or click (browser autoplay rules).

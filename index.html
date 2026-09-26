@@ -3,27 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Learn system design in VR: build a backend with your hands, press Play, and watch it survive or fall over." />
   <title>System Design Sandbox VR</title>
   <style>
+    :root { color-scheme: dark; }
     html, body { margin: 0; height: 100%; background: #0b1020; color: #e8ecf8; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
     #app { position: fixed; inset: 0; }
-    #hud { position: fixed; top: 10px; left: 10px; max-width: 320px; background: rgba(11,16,32,.82); border: 1px solid #2a3560; border-radius: 10px; padding: 10px 12px; z-index: 5; }
-    #hud h1 { font-size: 15px; margin: 0 0 6px; }
-    #hud button { background: #26346b; color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; margin: 2px 2px 2px 0; cursor: pointer; font: inherit; }
-    #hud button:hover, #hud button.on { background: #3d55b8; }
-    #hud small { display: block; color: #9aa6d0; margin-top: 6px; }
-    #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #1c2550; padding: 8px 14px; border-radius: 8px; z-index: 5; display: none; }
+    #boot { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; z-index: 20; background: #0b1020; }
+    #boot b { display: block; font-size: 26px; margin-bottom: 6px; }
+    #boot span { color: #9aa6d0; }
+    #hud { position: fixed; top: 10px; left: 10px; width: 330px; max-width: calc(100vw - 20px); max-height: calc(100vh - 20px); overflow: auto; background: rgba(11,16,32,.9); border: 1px solid #2a3560; border-radius: 12px; padding: 10px 12px; z-index: 5; }
+    #hud h1 { font-size: 15px; margin: 0; }
+    #hud .head { justify-content: space-between; align-items: center; }
+    #hud button, #dlg button { background: #26346b; color: #fff; border: 0; border-radius: 8px; padding: 7px 11px; margin: 2px 2px 2px 0; cursor: pointer; font: inherit; min-height: 32px; }
+    #hud button:hover:not(:disabled), #dlg button:hover:not(:disabled) { background: #3d55b8; }
+    #hud button:focus-visible, #dlg button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 1px; }
+    #hud button.on { background: #2f6b4f; }
+    #hud button:disabled { opacity: .45; cursor: default; }
+    #hud button.stop { background: #8a2b3a; }
+    #hud .row { display: flex; flex-wrap: wrap; margin: 6px 0; }
+    #hud .tabs button { flex: 1; }
+    #hud .levels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 6px 0; }
+    #hud .levels button { margin: 0; padding: 5px 0; position: relative; }
+    #hud .levels i { position: absolute; bottom: -1px; left: 0; right: 0; font-size: 9px; color: #ffd166; font-style: normal; line-height: 8px; }
+    #hud .sandbox label { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 6px 0; font-size: 13px; }
+    #hud .toggles { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0; }
+    #hud .tog { font-size: 12px; padding: 4px 8px; min-height: 28px; }
+    #hud .vol { display: flex; gap: 6px; align-items: center; font-size: 12px; margin-left: 4px; }
+    #hud small, #hud .stars { display: block; color: #9aa6d0; margin-top: 6px; }
+    #hud .stars { color: #ffd166; }
+    #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #1c2550; padding: 8px 14px; border-radius: 8px; z-index: 30; display: none; max-width: 90vw; }
+    #dlg { position: fixed; inset: 0; background: rgba(4,7,18,.7); display: grid; place-items: center; z-index: 15; }
+    #dlg[hidden], #hud [hidden] { display: none !important; }
+    #dlg .card { background: #111a3a; border: 1px solid #2a3560; border-radius: 14px; padding: 14px 18px; width: min(640px, 92vw); max-height: 86vh; overflow: auto; }
+    #dlg .row { display: flex; flex-wrap: wrap; margin: 8px 0; } #dlg .head { justify-content: space-between; align-items: center; }
+    #dlg h2, #dlg h3 { margin: 0; } #dlg textarea { width: 100%; box-sizing: border-box; background: #0b1020; color: #e8ecf8; border: 1px solid #2a3560; border-radius: 8px; padding: 8px; font: 12px ui-monospace, monospace; }
+    #dlg .gloss dt { font-weight: 700; margin-top: 10px; color: #b8c7ff; } #dlg .gloss dd { margin: 2px 0 0; color: #cfd8ff; }
+    @media (max-width: 700px) { #hud { width: auto; right: 10px; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
 </head>
 <body>
+  <div id="boot"><div><b>System Design Sandbox</b><span>Loading the board...</span></div></div>
   <div id="app"></div>
-  <div id="hud">
-    <h1>System Design Sandbox</h1>
-    <div id="levels"></div>
-    <div><button id="enter-vr" hidden>Enter VR</button><button id="play">Play (Space)</button><button id="reset">Reset (R)</button></div>
-    <small>Desktop: drag from the shelf to place, drag from a node's right dot to wire, drag a wire's middle to cut it, click a cache to change its policy, drop nodes on the bin to delete. Keys: Space play/stop, H hint, R reset, N next level, 1-5 pick level. In VR: pinch instead of click.</small>
-  </div>
-  <div id="toast"></div>
+  <div id="hud" aria-label="Controls"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
   <noscript>This experience needs JavaScript.</noscript>
   <script type="module" src="/src/xr/main.ts"></script>
 </body>

@@ -26,6 +26,9 @@ export class Cache {
   }
 
   invalidate(key: number): void { this.map.delete(key); }
+  clear(): void { this.map.clear(); }
+  get count(): number { return this.map.size; }
+  has(key: number): boolean { return this.map.has(key); }
 
   private evict(): void {
     if (this.policy === "lfu") {

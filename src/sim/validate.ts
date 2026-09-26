@@ -4,12 +4,18 @@ export interface Issue { severity: "error" | "warning"; code: string; message: s
 
 /** Which kinds may feed which. Anything else is rejected while wiring. */
 export const ALLOWED: Record<Kind, Kind[]> = {
-  client: ["lb", "api"],
+  client: ["lb", "api", "cdn", "limiter"],
+  cdn: ["lb", "api", "limiter"],
+  limiter: ["lb", "api"],
   lb: ["api", "lb"],
-  api: ["cache", "db", "queue"],
-  cache: ["db", "queue"],
-  queue: ["db", "api"],
+  api: ["cache", "db", "queue", "broker", "replica", "shard", "worker"],
+  cache: ["db", "queue", "replica", "shard"],
+  queue: ["db", "replica", "shard"],
+  broker: ["worker", "db", "replica", "shard"],
+  worker: ["db", "shard"],
+  shard: ["db"],
   db: [],
+  replica: [],
 };
 
 export function canConnect(from: Kind, to: Kind): boolean { return ALLOWED[from].includes(to); }
@@ -27,7 +33,8 @@ export function edgeProblem(d: Design, from: string, to: string): string | undef
 }
 
 function label(k: Kind): string {
-  return { client: "Users", lb: "A load balancer", api: "An API server", cache: "A cache", db: "The database", queue: "A queue" }[k];
+  return { client: "Users", lb: "A load balancer", api: "An API server", cache: "A cache", db: "The database", queue: "A queue",
+    replica: "A read replica", cdn: "A CDN", limiter: "A rate limiter", shard: "A shard router", broker: "A message broker", worker: "A worker pool" }[k];
 }
 
 function reaches(d: Design, start: string, target: string): boolean {
@@ -89,8 +96,11 @@ export function validate(d: Design): Issue[] {
     const reach = new Set<string>(), st = [c.id];
     while (st.length) { const x = st.pop()!; if (reach.has(x)) continue; reach.add(x); for (const e of d.edges) if (e.from === x) st.push(e.to); }
     for (const n of d.nodes) if (!reach.has(n.id)) warn("unreachable", `${n.id} gets no traffic. Wire it in.`, n.id);
-    for (const n of d.nodes) if (reach.has(n.id) && n.kind !== "db" && n.kind !== "client" && n.kind !== "cache"
+    for (const n of d.nodes) if (n.kind === "cache" && reach.has(n.id) && !d.edges.some((e) => e.from === n.id))
+      err("cache-dead-end", `${n.id} has nowhere to send misses. Wire it onward to the database.`, n.id);
+    for (const n of d.nodes) if (reach.has(n.id) && n.kind !== "db" && n.kind !== "client" && n.kind !== "cache" && n.kind !== "replica"
       && !d.edges.some((e) => e.from === n.id)) warn("dead-end", `${n.id} has nowhere to send requests. Connect it onward to the database.`, n.id);
+    for (const n of d.nodes) if (n.kind === "replica" && !d.nodes.some((x) => x.kind === "db")) warn("orphan-replica", `${n.id} copies a primary database, but there is none.`, n.id);
     if (!d.nodes.some((n) => n.kind === "db" && reach.has(n.id))) warn("no-db", "No database is reachable, so nothing is ever stored.");
   }
   return issues;

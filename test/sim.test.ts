@@ -4,7 +4,7 @@ import { mulberry32, poisson, Zipf, percentile } from "../src/sim/rng.js";
 import { Cache } from "../src/sim/cache.js";
 import { analyse, cacheHitRate, hintsFor } from "../src/sim/flow.js";
 import { simulate, Simulator } from "../src/sim/simulator.js";
-import { LEVELS, evaluate } from "../src/sim/levels.js";
+import { LEVELS, SANDBOX, evaluate } from "../src/sim/levels.js";
 import { node, steady, type Design } from "../src/sim/model.js";
 import { validate, edgeProblem, isRunnable } from "../src/sim/validate.js";
 
@@ -215,7 +215,7 @@ test("level 4 solved by routing writes through a queue", () => {
 });
 
 test("level 5 sandbox: a full design passes; empty wiring fails validation", () => {
-  const l = LEVELS[4];
+  const l = SANDBOX;
   const d: Design = { nodes: [users, node("lb", "lb"), node("a1", "api"), node("a2", "api"), node("a3", "api"), node("a4", "api"),
     node("c", "cache", { cacheSize: 400, policy: "lfu" }), node("q", "queue", { capacityRps: 400 }), node("db", "db", { capacityRps: 600 })],
     edges: [{ from: "users", to: "lb" }, ...["a1", "a2", "a3", "a4"].flatMap((a) => [{ from: "lb", to: a }, { from: a, to: "c" }, { from: a, to: "q" }]),

@@ -93,6 +93,11 @@ export function explainRun(level: Level, d: Design, v: Verdict): Explanation {
     const u = s.peakUtil[id] ?? 0;
     lines.push(`${id} was the first to break, at ${t.toFixed(0)}s. It peaked at ${fmtPct(u)} of its ${n.capacityRps} rps capacity, so extra requests waited in line and then were dropped.`);
     note("capacity"); note("overload");
+  } else if (s.errorRate > 0.02 && s.log.some((e) => /crash/.test(e.text))) {
+    const dead = s.log.find((e) => /crash/.test(e.text))!;
+    const heal = s.log.find((e) => /promoted/.test(e.text));
+    lines.push(`Nothing was overloaded: the errors came from the crash. ${dead.nodeId ?? "A part"} died at ${dead.t.toFixed(0)}s and every request that needed it failed${heal ? `, until ${heal.nodeId} took over at ${heal.t.toFixed(0)}s` : ", and nothing ever took over"}.`);
+    note("failover"); note("spof");
   } else {
     const w = worst(s, d);
     if (w && w.util > 0.05) lines.push(`Nothing overloaded. The busiest part, ${w.id}, peaked at ${fmtPct(w.util)} of capacity${w.util > 0.85 ? ", which leaves little headroom" : ", a comfortable margin"}.`);

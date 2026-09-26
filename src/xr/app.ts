@@ -28,6 +28,8 @@ export class App {
   constructor(kv: KV = defaultStore(), startLevel = 0) {
     this.kv = kv;
     this.settings = loadSettings(kv);
+    // First run: respect the OS-level reduced-motion preference.
+    try { if (!kv.getItem("sds:v1:settings") && typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches) this.settings = { ...this.settings, reducedMotion: true }; } catch { /* ignore */ }
     this.progress = loadProgress(kv);
     this.daily = dailyLevel(dateKey());
     this.game = new GameState(startLevel);
@@ -88,7 +90,7 @@ export class App {
     return !err;
   }
   shareCode(): string { return encodeSnapshot(this.game.snapshot()); }
-  shareUrl(base = typeof location !== "undefined" ? location.href.split("#")[0] : ""): string { return `${base}#d=${this.shareCode()}`; }
+  shareUrl(base = typeof location !== "undefined" ? location.origin + location.pathname : ""): string { return `${base}#d=${this.shareCode()}`; }
   exportJson(): string { return JSON.stringify(this.game.snapshot(), null, 2); }
 
   /** Import from a share URL, a bare code or JSON text. Switches level if the design belongs to another one. */

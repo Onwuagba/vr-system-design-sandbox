@@ -25,7 +25,7 @@ export class Menu {
   open_ = false;
 
   constructor(private v: GameView) {
-    this.backdrop = new Mesh(new PlaneGeometry(1.36, 0.78), new MeshBasicMaterial({ color: 0x0b1020, transparent: true, opacity: 0.97 }));
+    this.backdrop = new Mesh(new PlaneGeometry(1.36, 0.78), new MeshBasicMaterial({ color: 0x0b1020, transparent: true, opacity: 1 }));
     this.group.add(this.backdrop);
     this.v.reg(this.backdrop, {});
     this.title.position.set(0, 0.33, 0.005); this.group.add(this.title);
@@ -38,6 +38,8 @@ export class Menu {
       this.v.reg(b, { click: () => this.tap(idx) });
     }
     this.group.position.set(0, 0.02, 0.11);
+    this.group.traverse((o) => { o.renderOrder = 31; });
+    this.backdrop.renderOrder = 29; // strictly behind its own buttons, whatever the tilt
     this.v.root.add(this.group);
     this.setVisible(false);
   }

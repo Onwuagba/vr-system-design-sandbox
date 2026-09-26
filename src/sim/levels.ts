@@ -51,7 +51,7 @@ export const LEVELS: Level[] = [
     lesson: "A load balancer spreads requests so many small servers act like one big one.",
     concepts: ["load-balancer", "horizontal-scaling", "spof"],
     workload: w([{ untilSec: 20, rps: 600 }]),
-    start: chain(), palette: ["lb", "api"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 1e9, requires: ["lb"] }, starBudget: 12,
+    start: chain(), palette: ["lb", "api"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 1e9, requires: ["lb"] }, starBudget: 14,
     solutions: [
       { name: "LB + 2 APIs", build: () => stack({ apis: 2, db: { capacityRps: 2000 } }) },
       { name: "LB + 3 APIs", build: () => stack({ apis: 3, db: { capacityRps: 2000 } }) },
@@ -75,7 +75,7 @@ export const LEVELS: Level[] = [
     concepts: ["queue", "async", "backpressure"],
     workload: w([{ untilSec: 8, rps: 300 }, { untilSec: 13, rps: 900 }, { untilSec: 40, rps: 300 }], { writeFraction: 0.4 }),
     start: stack({ apis: 3, cache: { cacheSize: 300 } }),
-    palette: ["queue"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 50, requires: ["queue"] }, starBudget: 28,
+    palette: ["queue"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 50, requires: ["queue"] }, starBudget: 23,
     solutions: [
       { name: "Queue on the write path", build: () => stack({ apis: 3, cache: { cacheSize: 300 }, queue: true }) },
       { name: "Queue with a bigger buffer, LFU cache", build: () => stack({ apis: 3, cache: { cacheSize: 300, policy: "lfu" }, queue: { bufferSize: 8000 } }) },
@@ -87,7 +87,7 @@ export const LEVELS: Level[] = [
     concepts: ["horizontal-scaling", "cache", "queue", "headroom"],
     workload: w([{ untilSec: 6, rps: 600 }, { untilSec: 14, rps: 1500 }, { untilSec: 24, rps: 1800 }, { untilSec: 32, rps: 900 }], { writeFraction: 0.1 }),
     start: stack({ apis: 1, db: { capacityRps: 600 } }),
-    palette: ["lb", "api", "cache", "queue"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 50, requires: ["lb", "cache"] }, starBudget: 32,
+    palette: ["lb", "api", "cache", "queue"], goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 50, requires: ["lb", "cache"] }, starBudget: 29,
     solutions: [
       { name: "5 APIs, LFU cache, queue", build: () => stack({ apis: 5, cache: { cacheSize: 600, policy: "lfu" }, queue: true, db: { capacityRps: 600 } }) },
       { name: "6 APIs, LRU cache, queue", build: () => stack({ apis: 6, cache: { cacheSize: 600, policy: "lru" }, queue: true, db: { capacityRps: 600 } }) },
@@ -112,7 +112,7 @@ export const LEVELS: Level[] = [
     concepts: ["thundering-herd", "coalescing", "cache", "replica"],
     workload: w([{ untilSec: 24, rps: 1300 }], { writeFraction: 0.02, keyspace: 300, zipfS: 1.3, events: [{ atSec: 8, flushCache: true }] }),
     start: stack({ apis: 4, cache: { cacheSize: 150 } }), palette: ["cache", "replica"],
-    goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 1e9, requires: [] }, starBudget: 22,
+    goal: { maxErrorRate: 0.01, maxP99Ms: 300, maxEndBacklog: 1e9, requires: [] }, starBudget: 24,
     solutions: [
       { name: "Single-flight (coalescing) cache", build: () => stack({ apis: 4, cache: { cacheSize: 150, coalesce: true } }) },
       { name: "Two replicas absorb the misses", build: () => stack({ apis: 4, cache: { cacheSize: 150 }, replicas: 2 }) },
@@ -174,7 +174,7 @@ export const LEVELS: Level[] = [
     concepts: ["rate-limiter", "token-bucket", "fairness"],
     workload: w([{ untilSec: 20, rps: 800 }], { abuseFraction: 0.6, writeFraction: 0.05 }),
     start: chain(), palette: ["limiter", "lb", "api"],
-    goal: { maxErrorRate: 0.02, maxP99Ms: 250, maxEndBacklog: 1e9, requires: [], requiresAny: ["limiter"] }, starBudget: 10,
+    goal: { maxErrorRate: 0.02, maxP99Ms: 250, maxEndBacklog: 1e9, requires: [], requiresAny: ["limiter"] }, starBudget: 16,
     solutions: [
       { name: "Limiter in front of one API", build: () => extend(chain(), { nodes: [node("limiter", "limiter")], drop: ["users>api1"], edges: ["users>limiter", "limiter>api1"] }) },
       { name: "Limiter, balancer and two APIs", build: () => stack({ apis: 2, limiter: 20, db: { capacityRps: 2000 } }) },

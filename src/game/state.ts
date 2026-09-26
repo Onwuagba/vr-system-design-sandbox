@@ -37,8 +37,10 @@ export function autoLayout(d: Design): Record<string, Vec2> {
   const out: Record<string, Vec2> = {};
   const x0 = -0.6 + (maxD < 4 ? (4 - maxD) * 0.15 : 0);
   for (const [c, ids] of Object.entries(cols)) {
-    const gap = Math.min(0.18, 0.62 / Math.max(1, ids.length));
-    ids.forEach((id, i) => { out[id] = { x: x0 + Number(c) * step, y: (ids.length - 1) * gap / 2 - i * gap }; });
+    const n = ids.length, crowded = n > 3;
+    const gap = crowded ? Math.max(0.1, Math.min(0.16, 0.66 / (n - 1))) : Math.min(0.18, 0.62 / Math.max(1, n));
+    // A crowded column zig-zags sideways so neighbouring labels never sit on top of each other.
+    ids.forEach((id, i) => { out[id] = { x: x0 + Number(c) * step + (crowded ? (i % 2 ? 0.055 : -0.055) : 0), y: (n - 1) * gap / 2 - i * gap }; });
   }
   return out;
 }

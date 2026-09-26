@@ -98,10 +98,11 @@ export class GameView {
 
     this.info.position.set(0, 0.56, 0.02); this.root.add(this.info);
     this.coach.position.set(0, 0.85, 0.02); this.root.add(this.coach);
-    this.overlay.position.set(0, 0, 0.09); this.root.add(this.overlay);
+    this.overlay.position.set(0, 0, 0.09); this.overlay.renderOrder = 20; this.root.add(this.overlay);
     this.reg(this.overlay, {});
-    this.toastPlane.position.set(0, -0.3, 0.13); this.toastPlane.visible = false; this.root.add(this.toastPlane);
+    this.toastPlane.position.set(0, -0.3, 0.13); this.toastPlane.renderOrder = 60; this.toastPlane.visible = false; this.root.add(this.toastPlane);
     this.root.add(this.fx.root);
+    this.fx.root.traverse((o) => { o.renderOrder = 40; });
 
     this.ghost = this.makeNodeBody("api", false); this.ghost.visible = false; this.root.add(this.ghost);
     this.preview = new Mesh(new CylinderGeometry(0.005, 0.005, 1, 8), new MeshBasicMaterial({ color: 0xffffff }));
@@ -265,15 +266,15 @@ export class GameView {
   /** Place the controls on your dominant side and the tools on the other; scale for large-target mode. */
   layoutButtons() {
     const s = this.app.settings, k = s.largeTargets ? 1.3 : 1, side = s.hand === "right" ? 1 : -1;
-    const sb = this.game.level.sandbox === true;
+    const sb = this.game.level.sandbox === true, camp = this.game.mode === "campaign";
     const place = (ids: string[], x: number) => {
       ids.forEach((id, i) => { const b = this.buttons.get(id)!; b.visible = true; b.position.set(x, 0.32 - i * 0.135 * (k > 1 ? 1.08 : 1), 0.02); b.scale.setScalar(k); (b as any).pointerEvents = "auto"; });
     };
     const hide = (ids: string[]) => ids.forEach((id) => { const b = this.buttons.get(id)!; b.visible = false; (b as any).pointerEvents = "none"; });
     const sandboxTools = ["undo", "redo", "rps+", "rps-", "mix+", "mix-", "burst"], campaignTools = ["undo", "redo", "tidy", "save", "loadd"];
-    place(sb ? ["play", "speed", "hint", "reset", "menu"] : ["play", "speed", "hint", "reset", "prev", "next", "menu"], 0.95 * side);
+    place(camp ? ["play", "speed", "hint", "reset", "prev", "next", "menu"] : ["play", "speed", "hint", "reset", "menu"], 0.95 * side);
     place(sb ? sandboxTools : campaignTools, -0.95 * side);
-    hide(sb ? ["prev", "next", "tidy", "save", "loadd"] : ["rps+", "rps-", "mix+", "mix-", "burst"]);
+    hide([...(camp ? [] : ["prev", "next"]), ...(sb ? ["tidy", "save", "loadd"] : ["rps+", "rps-", "mix+", "mix-", "burst"])]);
   }
 
   private buildBin() {
@@ -289,7 +290,7 @@ export class GameView {
     for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 0.02 : 0.05; const x = Math.cos(a) * r, y = Math.sin(a) * r; if (i) sh.lineTo(x, y); else sh.moveTo(x, y); }
     sh.closePath();
     const geo = new ShapeGeometry(sh);
-    for (let i = 0; i < 3; i++) { const m = new Mesh(geo, new MeshBasicMaterial({ color: 0x33406e })); m.position.set(0.5 + i * 0.12 - 0.12, 0.32, 0.1); m.visible = false; this.root.add(m); this.stars.push(m); }
+    for (let i = 0; i < 3; i++) { const m = new Mesh(geo, new MeshBasicMaterial({ color: 0x33406e })); m.renderOrder = 22; m.position.set(0.5 + i * 0.12 - 0.12, 0.32, 0.1); m.visible = false; this.root.add(m); this.stars.push(m); }
     const defs: [string, string, () => void][] = [
       ["ov-retry", "RETRY", () => { this.setOverlayVisible(false); this.stop(); }],
       ["ov-page", "MORE", () => { this.ovPage = 1 - this.ovPage; this.renderOverlay(); }],
@@ -299,7 +300,7 @@ export class GameView {
     ];
     defs.forEach(([id, label, fn], i) => {
       const b = this.makeButton(id, label, 0.24, 0.09, fn, "#26346b", "bold 26px system-ui, sans-serif");
-      b.position.set(-0.5 + i * 0.255, -0.32, 0.12); this.ovButtons.push(b); this.buttons.delete(id);
+      b.position.set(-0.5 + i * 0.255, -0.32, 0.12); b.renderOrder = 22; this.ovButtons.push(b); this.buttons.delete(id);
     });
   }
 
@@ -679,7 +680,7 @@ export class GameView {
   private refreshInfo(snap?: Record<string, NodeSnap>) {
     const g = this.game, L = g.level;
     const stars = !L.sandbox && L.id > 0 && L.id <= LEVELS.length ? "  " + "*".repeat(this.app.progress[L.id] ?? 0) : "";
-    let text = L.sandbox ? `SANDBOX\n${L.brief}` : `${L.chapter.toUpperCase()}  ${isDaily(L) ? "" : "LEVEL " + L.id + ": "}${L.title.toUpperCase()}${stars}\n${L.brief}`;
+    let text = L.sandbox ? `SANDBOX\n${L.brief}` : isDaily(L) ? `${L.title.toUpperCase()}\n${L.brief}` : `${L.chapter.toUpperCase()}  LEVEL ${L.id}: ${L.title.toUpperCase()}${stars}\n${L.brief}`;
     if (this.status === "running" && this.sim) {
       const st = this.sim.liveStats();
       text += `\nRUNNING ${this.sim.t.toFixed(0)}s   ${Math.round(st.rps)} rps   p50 ${st.p50.toFixed(0)} ms   p99 ${st.p99.toFixed(0)} ms   errors ${(st.errorRate * 100).toFixed(1)}%`;

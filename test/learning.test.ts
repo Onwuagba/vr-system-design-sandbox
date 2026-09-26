@@ -176,6 +176,9 @@ test("coach: post-run explanation is tied to the metrics", () => {
   assert.ok(ex3.concepts.includes("hit-rate"));
   const l9 = LEVELS[8], s9 = l9.solutions[1].build(), ex9 = explainRun(l9, s9, evaluate(l9, s9));
   assert.match(ex9.lines.join("\n"), /crashed/); assert.match(ex9.lines.join("\n"), /promoted/);
+  const bare9 = explainRun(l9, l9.start, evaluate(l9, l9.start));
+  assert.match(bare9.lines.join("\n"), /errors came from the crash/); assert.match(bare9.lines.join("\n"), /nothing ever took over/);
+  assert.match(ex9.lines.join("\n"), /crashed/);
   const l12 = LEVELS[11], s12 = l12.solutions[0].build(), ex12 = explainRun(l12, s12, evaluate(l12, s12));
   assert.match(ex12.lines.join("\n"), /rate limiter rejected/);
 });

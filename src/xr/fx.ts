@@ -20,6 +20,7 @@ export class Fx {
   constructor() {
     this.inst = new InstancedMesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide, transparent: true }), this.cap);
     this.inst.count = 0; this.inst.frustumCulled = false; this.inst.position.z = 0.06;
+    this.inst.renderOrder = 40;
     this.root.add(this.inst);
   }
 
@@ -28,7 +29,7 @@ export class Fx {
     if (this.reduced) return;
     const mesh = this.free.pop() ?? new Mesh(new RingGeometry(0.92, 1, 40), new MeshBasicMaterial({ transparent: true, side: DoubleSide, depthWrite: false }));
     (mesh.material as MeshBasicMaterial).color.set(color);
-    mesh.position.set(x, y, 0.05); mesh.visible = true; this.root.add(mesh);
+    mesh.renderOrder = 40; mesh.position.set(x, y, 0.05); mesh.visible = true; this.root.add(mesh);
     this.rings.push({ mesh, t: 0, dur, from: radius * 0.4, to: radius });
   }
 

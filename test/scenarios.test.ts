@@ -16,10 +16,13 @@ test("campaign: 13 levels, every start fails, every reference solution passes, 2
     assert.ok(l.story.length > 40 && l.brief && l.lesson && l.concepts.length > 0, `level ${l.id} has narrative`);
     assert.ok(l.solutions.length >= (l.id === 1 ? 1 : 2), `level ${l.id} has multiple solutions`);
     assert.ok(validate(l.start).every((i) => i.severity !== "error") || l.id === 1, `level ${l.id} start is runnable`);
+    let best = 0;
     for (const sol of l.solutions) {
       const v = evaluate(l, sol.build());
       assert.ok(v.passed, `level ${l.id} "${sol.name}": ${v.reasons.join(" ")}`);
+      best = Math.max(best, v.stars);
     }
+    assert.equal(best, 3, `level ${l.id}: three stars must be reachable`);
     if (l.id > 1) assert.equal(evaluate(l, l.start).passed, false, `level ${l.id} start must fail`);
   }
 });

@@ -3,7 +3,7 @@
 // both see a playable board in about the time it takes to fetch three.js.
 import { AmbientLight, Color, DirectionalLight, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { App } from "./app.js";
-import { GameView, placeBoard } from "./game-view.js";
+import { GameView, faceCamera, placeBoard } from "./game-view.js";
 import { attachKeys, attachPointer } from "./desktop.js";
 import { LEVELS } from "../sim/levels.js";
 import { extractCode } from "../game/share.js";
@@ -46,7 +46,8 @@ async function main() {
     renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
     // The board plus its side panels is ~2.3 m wide; back the camera off on narrow windows so nothing is cropped.
     const usable = innerWidth > 900 ? (innerWidth - 350) / innerHeight : camera.aspect;
-    const d = Math.max(1.72, 2.3 / (2 * Math.tan((55 * Math.PI) / 360) * usable) * 1.02);
+    // 1.9 keeps the coach strip at the top of the (now camera-facing) board inside the frame at any window height.
+    const d = Math.max(1.9, 2.3 / (2 * Math.tan((55 * Math.PI) / 360) * usable) * 1.02);
     camera.position.set(0, 1.4 + (d - 1.72) * 0.25, 1.0 + (d - 1.72));
     camera.lookAt(0, 0.98, -0.72);
     // Leave room for the HUD panel on wide windows by sliding the picture to the right.
@@ -59,6 +60,7 @@ async function main() {
   const frame = () => {
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
     view.update(dt);
+    faceCamera(view.root, camera);
     renderer.render(scene, camera);
   };
   renderer.setAnimationLoop(() => { if (plain) frame(); });

@@ -701,4 +701,9 @@ export function placeBoard(root: Group, heightOffset = 0) {
   root.position.set(0, 0.98 + heightOffset, -0.72);
   root.rotation.x = -0.55;
 }
+/** Outside VR the board leans back to face the (fixed) desktop camera, so panels and text are not skewed. */
+export function faceCamera(root: Group, camera: Object3D) {
+  const r = root.getWorldPosition(new Vector3()), c = camera.getWorldPosition(new Vector3());
+  root.rotation.x = -Math.min(0.55, Math.max(0.05, Math.atan2(c.y - r.y, c.z - r.z)));
+}
 export type { Handlers as BoardHandlers };

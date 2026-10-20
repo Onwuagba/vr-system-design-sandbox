@@ -1,18 +1,38 @@
 # System Design Sandbox (VR)
 
-Meta VR Start Developer Competition 2026, **Productivity** track. Learn system design by building it with your
-hands: pinch a load balancer, API servers, a cache, a queue and more off a shelf, wire them to the database,
-press Play, and watch simulated requests flow as glowing particles. Overloaded parts turn red, pulse, sound an
-alarm, and the coach tells you why. Seated, hand tracked, and playable in a normal browser tab too.
+Meta VR Start Developer Competition 2026, **Productivity** track. **Rehearse your own system's worst day, with your hands.**
 
-**The demo moment:** Level 3. The database turns red. You pinch a cache off the shelf, wire it in by hand, press
-Play, and the database turns green.
+Paste your architecture (a docker-compose file, a Mermaid flowchart or JSON) and it appears as a board in front of you,
+laid out in depth: users nearest, the data tier furthest. Pick an incident (traffic spike, hot key, database failover,
+cache stampede, lost server) and press Play. Simulated requests flow as glowing particles; whatever is overloaded
+turns red, pulses and sounds an alarm, and the coach tells you why. Then fix it by pinching parts off the shelf and
+wiring them in, and run it again. Seated, hand tracked, and playable in a normal browser tab too.
+
+**The demo moment:** import the typical SaaS stack, run the database failover drill, watch 57% of requests fail,
+add a replica and a queue by hand, run it again and watch the loss fall to about 5%, then tune until it passes.
+
+It is a rough what-if, not a prediction: the simulator models capacity, latency, caching, queues, replicas and failover
+with simple, documented rules (see `src/sim/`), so it shows which part breaks first and why, not production numbers.
+
+## Drill your own stack
+
+- **Desktop or phone:** open the **Drill** tab, then *Drill your own stack*, paste your file, pick an incident, press Run.
+- **In the headset (nothing to paste):** MENU > DRILLS, pick a sample stack and an incident.
+- **By link:** `?sample=saas&drill=failover`, or `#stack=<base64url of your text>&drill=hotkey`.
+- **Formats:** docker-compose (`services`, `image`, `depends_on`, `deploy.replicas`), Mermaid `graph`/`flowchart`, or
+  `{"nodes":[{"id","kind"}],"edges":[["a","b"]]}`. Kinds are inferred from names and images (nginx, redis, postgres,
+  rabbitmq, worker, ...). Anything it could not map, or had to assume (for example that a cache sits in front of the
+  database), is reported as a warning instead of guessed silently.
+
+The five incidents live in `src/import/stack.ts`; the importer and drills have their own tests (`test/import.test.ts`).
+
+The original 13-level campaign is still here and teaches the same ideas step by step.
 
 ## Run
 
 ```bash
 npm install
-npm test          # ~75 tests: simulator, scenarios, game logic, learning layer, feedback
+npm test          # ~80 tests: simulator, scenarios, game logic, learning layer, feedback, importer and drills
 npm run dev       # http://localhost:5173 (IWER Quest 3 emulator is injected on localhost only)
 npm run build     # type-check + production build into dist/
 ```

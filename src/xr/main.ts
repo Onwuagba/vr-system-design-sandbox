@@ -1,6 +1,7 @@
 // Entry point. Kept small on purpose: it paints the page immediately, builds the board with plain three.js (no XR
 // runtime), and only downloads the IWSDK/VR layer when the player asks to enter VR. Desktop and headset browsers
 // both see a playable board in about the time it takes to fetch three.js.
+import { SAMPLE_STACKS, parseStack } from "../import/stack.js";
 import { AmbientLight, Color, DirectionalLight, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { App } from "./app.js";
 import { GameView, faceCamera, placeBoard } from "./game-view.js";
@@ -24,6 +25,12 @@ async function main() {
   const app = new App(undefined, startLevel);
   const mode = params.get("mode");
   if (mode === "sandbox") app.startSandbox(); else if (mode === "daily") app.startDaily();
+  else if (params.get("drill") || params.get("sample") || location.hash.startsWith("#stack=")) {
+    try {
+      const raw = location.hash.startsWith("#stack=") ? decodeURIComponent(escape(atob(location.hash.slice(7).replace(/-/g, "+").replace(/_/g, "/")))) : SAMPLE_STACKS.find((s) => s.id === params.get("sample"))?.text;
+      app.startDrill(raw ? parseStack(raw) : undefined, params.get("drill") ?? undefined);
+    } catch (e) { console.warn("Could not load the stack from the URL:", e); }
+  }
   const scene = new Scene();
   scene.background = new Color(0x070b18);
   scene.add(new AmbientLight(0xffffff, 1.6));

@@ -16,6 +16,7 @@ import { KIND_INFO, concept } from "../game/concepts.js";
 import { resultPages } from "../game/result.js";
 import { Tutorial } from "../game/tutorial.js";
 import { isDaily } from "../game/daily.js";
+import { isDrill } from "../import/stack.js";
 import { TextPlane } from "./text.js";
 import { Fx } from "./fx.js";
 import type { App } from "./app.js";
@@ -161,7 +162,7 @@ export class GameView {
       if (!d.moved) this.game.checkpoint();
       d.moved = true; this.game.move(d.id, l);
     } else if (d.type === "wire") {
-      const a = this.portPos(d.from, true); this.setSegment(this.preview, new Vector3(a.x, a.y, 0.03), new Vector3(l.x, l.y, 0.03));
+      const a = this.portPos(d.from, true); this.setSegment(this.preview, new Vector3(a.x, a.y, 0.03 + this.zAt(a.x)), new Vector3(l.x, l.y, 0.03 + this.zAt(l.x)));
       this.preview.visible = true;
       const t = nearestNode(this.game, l, 0.09, d.from);
       (this.preview.material as MeshBasicMaterial).color.set(t && edgeProblem(this.game.design, d.from, t) ? 0xff5555 : t ? 0x55ff99 : 0xffffff);
@@ -227,6 +228,9 @@ export class GameView {
     return g;
   }
 
+  /** The request travels into the distance: parts nearer the users sit closer to you, the data tier sits furthest away.
+   *  Static, never moves, so it adds depth to read without adding motion. */
+  private zAt(x: number) { return Math.max(0, Math.min(0.2, 0.1 - x * 0.17)); }  // 0.2 m near the users, 0 at the data tier; never behind the backdrop
   private portPos(id: string, out: boolean): Vec2 { const p = this.posOf(id); return { x: p.x + (out ? PORT_OUT : PORT_IN), y: p.y }; }
 
   private setSegment(m: Mesh, a: Vector3, b: Vector3, thick = 1) {
@@ -561,6 +565,7 @@ export class GameView {
   loadLevel(i: number) { this.stop(); this.app.startCampaign(i); this.levelChanged(); }
   loadSandbox() { this.stop(); this.app.startSandbox(); this.levelChanged(); }
   loadDaily() { this.stop(); this.app.startDaily(); this.levelChanged(); }
+  loadDrill(stack?: import("../import/stack.js").ParsedStack, drillId?: string) { this.stop(); this.app.startDrill(stack, drillId); this.levelChanged(); }
   /** Call after the app switched level by itself (import). */
   refreshLevel() { if (this.lastLevel !== this.game.level) { this.stop(); this.levelChanged(); } }
 
@@ -595,7 +600,7 @@ export class GameView {
     // nodes
     for (const [id, v] of this.nodes) {
       const p = this.game.pos[id]; if (!p) continue;
-      v.group.position.set(p.x, p.y, 0.01);
+      v.group.position.set(p.x, p.y, 0.01 + this.zAt(p.x));
       const age = this.time - v.born;
       if (!this.reduced && age < 0.3) { const k = age / 0.3, s = 0.4 + 0.6 * (1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2)); v.group.scale.setScalar(Math.max(0.4, s)); }
       else if (v.group.scale.x !== 1) v.group.scale.setScalar(1);
@@ -631,8 +636,8 @@ export class GameView {
       const a = this.portPos(w.from, true), b = this.portPos(w.to, false);
       const load = snap?.[w.to]?.arrivalRps ?? 0;
       const thick = 1 + Math.min(2.2, load / 450);
-      this.setSegment(w.line, new Vector3(a.x, a.y, 0.03), new Vector3(b.x, b.y, 0.03), thick);
-      w.handle.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0.035);
+      this.setSegment(w.line, new Vector3(a.x, a.y, 0.03 + this.zAt(a.x)), new Vector3(b.x, b.y, 0.03 + this.zAt(b.x)), thick);
+      w.handle.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0.035 + this.zAt((a.x + b.x) / 2));
       const hot = snap?.[w.to]?.overloaded, dead = snap?.[w.to]?.down;
       (w.line.material as MeshBasicMaterial).color.set(dead ? 0x444a5c : hot ? 0xff5555 : 0x6f7db8);
     }
@@ -646,7 +651,7 @@ export class GameView {
     }
     for (const p of this.particles) {
       const a = this.portPos(p.from, true), b = this.portPos(p.to, false);
-      pos.set(a.x + (b.x - a.x) * p.t, a.y + (b.y - a.y) * p.t, 0.02);
+      const px = a.x + (b.x - a.x) * p.t; pos.set(px, a.y + (b.y - a.y) * p.t, 0.02 + this.zAt(px));
       const s = this.reduced ? 1 : 0.55 + 0.45 * Math.sin(Math.PI * Math.min(1, p.t * 1.05)); // swell in the middle of the wire
       sc.set(s, s, s);
       m.compose(pos, q, sc); this.pMesh.setMatrixAt(n, m);
@@ -689,7 +694,7 @@ export class GameView {
   private refreshInfo(snap?: Record<string, NodeSnap>) {
     const g = this.game, L = g.level;
     const stars = !L.sandbox && L.id > 0 && L.id <= LEVELS.length ? "  " + "*".repeat(this.app.progress[L.id] ?? 0) : "";
-    let text = L.sandbox ? `SANDBOX\n${L.brief}` : isDaily(L) ? `${L.title.toUpperCase()}\n${L.brief}` : `${L.chapter.toUpperCase()}  LEVEL ${L.id}: ${L.title.toUpperCase()}${stars}\n${L.brief}`;
+    let text = L.sandbox ? `SANDBOX\n${L.brief}` : isDaily(L) || isDrill(L) ? `${L.title.toUpperCase()}\n${L.brief}` : `${L.chapter.toUpperCase()}  LEVEL ${L.id}: ${L.title.toUpperCase()}${stars}\n${L.brief}`;
     if (this.status === "running" && this.sim) {
       const st = this.sim.liveStats();
       text += `\nRUNNING ${this.sim.t.toFixed(0)}s   ${Math.round(st.rps)} rps   p50 ${st.p50.toFixed(0)} ms   p99 ${st.p99.toFixed(0)} ms   errors ${(st.errorRate * 100).toFixed(1)}%`;

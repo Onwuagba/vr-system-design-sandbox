@@ -4,6 +4,8 @@ import { LEVELS } from "../sim/levels.js";
 import { CONCEPTS } from "../game/concepts.js";
 import { totalStars } from "../game/storage.js";
 import { isDaily } from "../game/daily.js";
+import { cost } from "../sim/model.js";
+import { DRILLS, SAMPLE_STACKS, parseStack } from "../import/stack.js";
 import type { App } from "./app.js";
 import type { GameView } from "./game-view.js";
 
@@ -23,7 +25,7 @@ export function mountHud(app: App, view: GameView, opts: HudOpts) {
 
   const head = h("div", { class: "row head" }, h("h1", {}, "System Design Sandbox"), h("button", { id: "collapse", title: "Collapse", "aria-label": "Collapse panel" }, "-"));
   const tabs = h("div", { class: "row tabs", role: "tablist" });
-  const tabDefs: [string, () => void][] = [["Campaign", () => view.loadLevel(Math.max(0, g.index))], ["Sandbox", () => view.loadSandbox()], ["Daily", () => view.loadDaily()]];
+  const tabDefs: [string, () => void][] = [["Campaign", () => view.loadLevel(Math.max(0, g.index))], ["Sandbox", () => view.loadSandbox()], ["Daily", () => view.loadDaily()], ["Drill", () => view.loadDrill()]];
   const tabBtns = tabDefs.map(([l, fn]) => { const b = h("button", { role: "tab" }, l); b.onclick = fn; tabs.append(b); return b; });
   const levels = h("div", { class: "levels" });
   const run = h("div", { class: "row" });
@@ -45,8 +47,19 @@ export function mountHud(app: App, view: GameView, opts: HudOpts) {
   const enter = h("button", { id: "enter-vr", hidden: "" }, "Enter VR"); enter.onclick = async () => { enter.disabled = true; enter.textContent = "Loading VR..."; try { await opts.enterVR(); } catch (e) { view.toast("Could not start VR: " + ((e as Error).message ?? e)); } enter.disabled = false; enter.textContent = "Enter VR"; };
   const info = h("small", { class: "help" }, "Drag a part from the shelf onto the board. Drag from a part's right-hand dot to wire it. Click a wire's red dot to cut it. Click a cache to change its eviction. Drop a part on DELETE to remove it. In VR the same actions are a pinch (ray) or fingertip poke.");
   const stars = h("div", { class: "stars" });
+  // Import your own stack and drill an incident on it (desktop/phone: paste text; in the headset use MENU > DRILLS presets).
+  const drill = h("details", { class: "drill" }, h("summary", {}, "Drill your own stack"));
+  const ta = h("textarea", { id: "stack-text", rows: "6", placeholder: "Paste a docker-compose file, a Mermaid flowchart or JSON", "aria-label": "Your architecture" }) as HTMLTextAreaElement;
+  const pick = h("select", { id: "drill-id", "aria-label": "Incident" }, ...DRILLS.map((d) => h("option", { value: d.id }, d.title))) as HTMLSelectElement;
+  const sample = h("select", { id: "stack-sample", "aria-label": "Sample stack" }, h("option", { value: "" }, "Sample stacks..."), ...SAMPLE_STACKS.map((x) => h("option", { value: x.id }, x.title))) as HTMLSelectElement;
+  sample.onchange = () => { const x = SAMPLE_STACKS.find((s) => s.id === sample.value); if (x) ta.value = x.text; };
+  const go = mk("Run drill", "run-drill", () => {
+    try { const p = parseStack(ta.value || SAMPLE_STACKS[1].text); view.loadDrill(p, pick.value); if (p.warnings.length) view.toast(p.warnings.slice(0, 2).join(" "), false); }
+    catch (e) { view.toast((e as Error).message); }
+  });
+  drill.append(sample, ta, pick, go);
 
-  const body = h("div", { class: "body" }, tabs, levels, run, sandbox, tools, toggles, enter, stars, info);
+  const body = h("div", { class: "body" }, tabs, levels, run, sandbox, tools, toggles, enter, stars, drill, info);
   hud.append(head, body);
   document.getElementById("collapse")!.onclick = () => { body.hidden = !body.hidden; (document.getElementById("collapse") as HTMLElement).textContent = body.hidden ? "+" : "-"; };
 
@@ -94,7 +107,7 @@ export function mountHud(app: App, view: GameView, opts: HudOpts) {
 
   // ----- refresh -----
   function refresh() {
-    tabBtns.forEach((b, i) => { const on = ["campaign", "sandbox", "daily"][i] === g.mode; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+    tabBtns.forEach((b, i) => { const on = ["campaign", "sandbox", "daily", "drill"][i] === g.mode; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
     levels.hidden = g.mode !== "campaign"; sandbox.hidden = g.mode !== "sandbox";
     levels.innerHTML = "";
     LEVELS.forEach((l, i) => {
@@ -102,7 +115,7 @@ export function mountHud(app: App, view: GameView, opts: HudOpts) {
       const b = h("button", { class: g.mode === "campaign" && g.index === i ? "on" : "", title: `${l.title}${s ? " (" + s + " stars)" : ""}` }, String(l.id), h("i", {}, "*".repeat(s)));
       b.onclick = () => view.loadLevel(i); levels.append(b);
     });
-    stars.textContent = g.mode === "daily" ? `Daily ${app.daily.key}: par cost ${app.daily.par}. Best: ${app.dailyScores[0]?.score ?? "none yet"}` : `Stars ${totalStars(app.progress)} / ${LEVELS.length * 3}`;
+    stars.textContent = g.mode === "drill" ? `Incident drill on your stack (${app.drillStack.design.nodes.length} parts). Cost ${cost(g.design)}.` : g.mode === "daily" ? `Daily ${app.daily.key}: par cost ${app.daily.par}. Best: ${app.dailyScores[0]?.score ?? "none yet"}` : `Stars ${totalStars(app.progress)} / ${LEVELS.length * 3}`;
     for (const t of togBtns) { const on = t.get(); t.b.classList.toggle("on", on); t.b.setAttribute("aria-checked", String(on)); }
     (document.getElementById("undo") as HTMLButtonElement).disabled = !g.canUndo;
     (document.getElementById("redo") as HTMLButtonElement).disabled = !g.canRedo;

@@ -1,5 +1,6 @@
 // The application shell: owns the game state, settings, storage, sound and haptics, and every player-level action
 // (switch mode, save, load, share, import). The 3D board and the desktop HUD are both thin views over this.
+import { DRILLS, SAMPLE_STACKS, drillLevel, isDrill, parseStack, type ParsedStack } from "../import/stack.js";
 import { GameState } from "../game/state.js";
 import { LEVELS, SANDBOX, type Level, type Verdict } from "../sim/levels.js";
 import { DAILY_ID, dailyLevel, dailyScore, dateKey, isDaily, type DailyLevel } from "../game/daily.js";
@@ -10,7 +11,7 @@ import { drawCard, CARD } from "../game/card.js";
 import { Sound } from "./audio.js";
 import { haptic, supportsHaptics, type HapticSession, type Pattern } from "./haptics.js";
 
-export type Mode = "campaign" | "sandbox" | "daily";
+export type Mode = "campaign" | "sandbox" | "daily" | "drill";
 
 export class App {
   kv: KV;
@@ -42,16 +43,25 @@ export class App {
 
   get level(): Level { return this.game.level; }
   get mode(): Mode { return this.game.mode; }
-  get slot(): string { return this.level.sandbox ? "sandbox" : isDaily(this.level) ? `daily-${this.daily.key}` : `L${this.level.id}`; }
+  get slot(): string { return this.level.sandbox ? "sandbox" : isDaily(this.level) ? `daily-${this.daily.key}` : isDrill(this.level) ? `drill-${this.drillId}` : `L${this.level.id}`; }
 
   // ---------- modes ----------
   startCampaign(i: number) { this.game.load(i); this.changed(); }
   startSandbox() { this.game.loadSandbox(); this.changed(); }
+  /** The stack the player imported (or picked) and which incident is being drilled on it. */
+  drillStack: ParsedStack = parseStack(SAMPLE_STACKS[1].text);
+  drillId = DRILLS[0].id;
+  startDrill(stack?: ParsedStack, drillId?: string) {
+    if (stack) this.drillStack = stack;
+    if (drillId) this.drillId = drillId;
+    this.game.loadLevel(drillLevel(this.drillStack, this.drillId)); this.changed();
+  }
   startDaily() { this.daily = dailyLevel(dateKey()); this.game.loadLevel(this.daily); this.changed(); }
   get dailyScores(): ScoreEntry[] { return loadScores(this.kv, this.daily.key); }
 
   private onVerdict(v: Verdict, level: Level) {
     if (level.sandbox) return;
+    if (isDrill(level)) { this.changed(); return; }
     if (isDaily(level)) {
       const score = dailyScore(level, v);
       if (v.passed && v.summary) { this.lastScore = { score, ...recordScore(this.kv, level.key, { score, stars: v.stars, cost: v.cost, p99: v.summary.p99Ms, at: Date.now() }) }; }

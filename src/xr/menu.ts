@@ -1,5 +1,6 @@
 // The in-world menu: a panel that floats over the board with big buttons, so every feature is reachable by pinch
 // or poke in a headset with no keyboard. Pages: main, levels, settings, share, glossary.
+import { DRILLS, SAMPLE_STACKS, parseStack } from "../import/stack.js";
 import { Group, Mesh, MeshBasicMaterial, PlaneGeometry } from "three";
 import { LEVELS } from "../sim/levels.js";
 import { CONCEPTS } from "../game/concepts.js";
@@ -8,7 +9,7 @@ import { TextPlane } from "./text.js";
 import type { GameView } from "./game-view.js";
 
 interface Item { label: string; fn: () => void; on?: boolean; disabled?: boolean }
-type Page = "main" | "levels" | "settings" | "share" | "glossary";
+type Page = "main" | "levels" | "settings" | "share" | "glossary" | "drills";
 const POOL = 15;
 
 export class Menu {
@@ -76,6 +77,7 @@ export class Menu {
           { label: "CAMPAIGN", fn: this.go("levels") },
           { label: "SANDBOX", fn: () => { this.v.loadSandbox(); close(); }, on: g.mode === "sandbox" },
           { label: `DAILY ${a.daily.key.slice(5)}`, fn: () => { this.v.loadDaily(); close(); }, on: g.mode === "daily" },
+          { label: "DRILLS", fn: this.go("drills"), on: g.mode === "drill" },
           { label: "SAVE", fn: () => a.save() },
           { label: "LOAD", fn: () => { a.load(); close(); }, disabled: !a.hasSave },
           { label: "SHARE / IMPORT", fn: this.go("share") },
@@ -86,6 +88,15 @@ export class Menu {
           { label: "CLOSE", fn: close },
         ];
         body = isDaily(g.level) ? `Daily best: ${a.dailyScores[0]?.score ?? "none yet"}. Same puzzle for everyone today.` : `Stars earned: ${Object.values(a.progress).reduce((x, y) => x + y, 0)} of ${LEVELS.length * 3}`;
+        break;
+      case "drills":
+        title = "INCIDENT DRILLS";
+        items = [
+          ...SAMPLE_STACKS.map((x) => ({ label: `STACK ${x.title.slice(0, 18)}`, fn: () => { this.v.loadDrill(parseStack(x.text), a.drillId); close(); }, on: g.mode === "drill" && a.drillStack.design.nodes.length === parseStack(x.text).design.nodes.length })),
+          ...DRILLS.map((d) => ({ label: `DRILL ${d.title.slice(0, 16)}`, fn: () => { this.v.loadDrill(undefined, d.id); close(); }, on: g.mode === "drill" && a.drillId === d.id })),
+          { label: "BACK", fn: this.go("main") },
+        ];
+        body = "Pick a stack, then an incident. Paste your own on the desktop page: Drill your own stack.";
         break;
       case "levels":
         title = "CAMPAIGN";

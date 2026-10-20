@@ -1,4 +1,5 @@
 // Pure game state: which level, what the player has placed and wired, undo/redo. No rendering.
+import { isDrill } from "../import/stack.js";
 import type { Design, EvictionPolicy, Kind } from "../sim/model.js";
 import { COST, node } from "../sim/model.js";
 import { LEVELS, SANDBOX, evaluate, type Level, type Verdict } from "../sim/levels.js";
@@ -31,11 +32,11 @@ export function autoLayout(d: Design): Record<string, Vec2> {
   const fallback: Record<Kind, number> = { client: 0, cdn: 1, limiter: 1, lb: 1, api: 2, cache: 3, queue: 3, broker: 3, shard: 3, worker: 4, replica: 4, db: 4 };
   for (const n of d.nodes) if (depth[n.id] === undefined) depth[n.id] = fallback[n.kind];
   const maxD = Math.max(1, ...Object.values(depth));
-  const step = Math.min(0.3, 1.2 / maxD);
+  const step = Math.min(0.27, 1.02 / maxD);
   const cols: Record<number, string[]> = {};
   for (const n of d.nodes) (cols[depth[n.id]] ??= []).push(n.id);
   const out: Record<string, Vec2> = {};
-  const x0 = -0.6 + (maxD < 4 ? (4 - maxD) * 0.15 : 0);
+  const x0 = -0.5 + (maxD < 4 ? (4 - maxD) * 0.13 : 0);
   for (const [c, ids] of Object.entries(cols)) {
     const n = ids.length, crowded = n > 3;
     const gap = crowded ? Math.max(0.1, Math.min(0.16, 0.66 / (n - 1))) : Math.min(0.18, 0.62 / Math.max(1, n));
@@ -63,7 +64,7 @@ export class GameState {
   constructor(levelIndex = 0) { this.load(levelIndex); }
 
   get index(): number { return LEVELS.indexOf(this.level); }
-  get mode(): "campaign" | "sandbox" | "daily" { return this.level.sandbox ? "sandbox" : LEVELS.includes(this.level) ? "campaign" : "daily"; }
+  get mode(): "campaign" | "sandbox" | "daily" | "drill" { return this.level.sandbox ? "sandbox" : LEVELS.includes(this.level) ? "campaign" : isDrill(this.level) ? "drill" : "daily"; }
 
   load(levelIndex: number) { this.loadLevel(LEVELS[Math.max(0, Math.min(LEVELS.length - 1, levelIndex))]); }
   loadSandbox() { this.loadLevel(SANDBOX); }

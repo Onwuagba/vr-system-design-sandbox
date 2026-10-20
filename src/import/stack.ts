@@ -3,7 +3,7 @@
 import type { Design, Edge, Kind, Node, Workload } from "../sim/model.js";
 import { COST, cost, node } from "../sim/model.js";
 import { canConnect, validate } from "../sim/validate.js";
-import type { Level } from "../sim/levels.js";
+import type { Goal, Level } from "../sim/levels.js";
 
 export const DRILL_ID = 101;
 
@@ -203,7 +203,7 @@ export function parseStack(text: string): ParsedStack {
 }
 
 // ---------- incident drills ----------
-export interface Drill { id: string; title: string; story: string; brief: (rps: number) => string; lesson: string; concepts: string[]; workload: (rps: number, d: Design) => Workload }
+export interface Drill { goal?: Partial<Goal>; id: string; title: string; story: string; brief: (rps: number) => string; lesson: string; concepts: string[]; workload: (rps: number, d: Design) => Workload }
 
 const base = { writeFraction: 0.1, keyspace: 1000, zipfS: 1, warmCaches: true };
 const firstOf = (d: Design, k: Kind) => d.nodes.find((n) => n.kind === k)?.id;
@@ -215,7 +215,7 @@ export const DRILLS: Drill[] = [
   { id: "hotkey", title: "Hot key", story: "One product page is suddenly most of your traffic.",
     brief: (rps) => `${rps * 2} rps and most of it hits one key.`, lesson: "A tiny cache in front of the hot key beats sharding.", concepts: ["hot-key", "cache"],
     workload: (rps) => ({ ...base, keyspace: 300, zipfS: 1.5, writeFraction: 0.005, phases: [{ untilSec: 20, rps: rps * 2 }] }) },
-  { id: "failover", title: "Database failover", story: "The primary database dies in the middle of a busy morning.",
+  { id: "failover", goal: { maxErrorRate: 0.06, maxEndBacklog: 200 }, title: "Database failover", story: "The primary database dies in the middle of a busy morning.",
     brief: (rps) => `At ${rps} rps the database crashes at 8 seconds. Survive it.`, lesson: "A replica and a queue hide the gap while a standby takes over.", concepts: ["failover", "replica"],
     workload: (rps, d) => ({ ...base, writeFraction: 0.2, phases: [{ untilSec: 24, rps }], events: [{ atSec: 8, kill: firstOf(d, "db") ?? "db" }] }) },
   { id: "stampede", title: "Cache stampede", story: "A deploy flushes the cache and every request now misses at once.",
@@ -241,7 +241,7 @@ export function drillLevel(parsed: ParsedStack, drillId = "spike", rps?: number)
   return {
     id: DRILL_ID, chapter: "Drill", title: `Drill: ${dr.title}`, story: dr.story, brief: `${dr.brief(load)} Your stack costs ${cost(start)}; fix it for as little as you can.`,
     lesson: dr.lesson, concepts: dr.concepts, workload: dr.workload(load, start), start, palette,
-    goal: { maxErrorRate: 0.02, maxP99Ms: 400, maxEndBacklog: 60, requires: [] }, starBudget: Math.ceil(cost(start) * 1.3),
+    goal: { maxErrorRate: 0.02, maxP99Ms: 400, maxEndBacklog: 60, requires: [], ...dr.goal }, starBudget: Math.ceil(cost(start) * 1.3),
     solutions: [{ name: "Your stack as imported", build: () => structuredClone(parsed.design) }],
   };
 }

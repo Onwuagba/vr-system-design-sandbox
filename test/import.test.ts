@@ -68,3 +68,38 @@ test("baseline load scales with the stack", () => {
   const small = parseStack(SAMPLE_STACKS[0].text).design, big = parseStack(SAMPLE_STACKS[2].text).design;
   assert.ok(baselineRps(big) >= baselineRps(small));
 });
+
+// Every drill must be winnable by hand: these are the fixes a player would build.
+const fix = (sample: string, drill: string, edit: (d: ReturnType<typeof parseStack>["design"]) => void) => {
+  const lv = drillLevel(parseStack(SAMPLE_STACKS.find((s) => s.id === sample)!.text), drill);
+  const d = structuredClone(lv.start); edit(d); return { lv, before: evaluate(lv, lv.start), after: evaluate(lv, d) };
+};
+const addReplicaAndQueue = (d: any) => {
+  const apis = d.nodes.filter((n: any) => n.kind === "api"), db = d.nodes.find((n: any) => n.kind === "db").id;
+  d.nodes.push(node("replica1", "replica"), node("queue1", "queue"));
+  for (const a of apis) d.edges.push({ from: a.id, to: "queue1" }, { from: a.id, to: "replica1" });
+  d.edges.push({ from: "queue1", to: db }, { from: "queue1", to: "replica1" });
+};
+const addLbAndApis = (n: number) => (d: any) => {
+  const db = d.nodes.find((x: any) => x.kind === "db").id, app = d.nodes.find((x: any) => x.kind === "api");
+  d.edges = d.edges.filter((e: any) => e.from !== "users");
+  d.nodes.push(node("lb1", "lb")); d.edges.push({ from: "users", to: "lb1" }, { from: "lb1", to: app.id });
+  for (let i = 0; i < n; i++) { const id = `api-x${i}`; d.nodes.push(node(id, "api")); d.edges.push({ from: "lb1", to: id }, { from: id, to: db }); }
+};
+
+test("failover drill on the SaaS stack: fails as given, a replica plus a queue passes", () => {
+  const r = fix("saas", "failover", addReplicaAndQueue);
+  assert.equal(r.before.passed, false); assert.equal(r.after.passed, true, JSON.stringify(r.after.summary));
+});
+const addCache = (d: any) => {
+  const db = d.nodes.find((x: any) => x.kind === "db").id;
+  d.nodes.push(node("cache1", "cache"));
+  for (const a of d.nodes.filter((x: any) => x.kind === "api")) { d.edges = d.edges.filter((e: any) => !(e.from === a.id && e.to === db)); d.edges.push({ from: a.id, to: "cache1" }); }
+  d.edges.push({ from: "cache1", to: db });
+};
+test("spike and lost-server drills on the monolith: fail as given, a balancer plus APIs (and a cache for the spike) pass", () => {
+  for (const [drill, n, withCache] of [["spike", 3, true], ["serverloss", 2, false]] as const) {
+    const r = fix("monolith", drill, (d) => { addLbAndApis(n)(d); if (withCache) addCache(d); });
+    assert.equal(r.before.passed, false, drill); assert.equal(r.after.passed, true, `${drill}: ${JSON.stringify(r.after.summary)}`);
+  }
+});

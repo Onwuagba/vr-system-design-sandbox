@@ -99,9 +99,9 @@ export class GameView {
 
     this.info.position.set(0, 0.56, 0.02); this.root.add(this.info);
     this.coach.position.set(0, 0.85, 0.02); this.root.add(this.coach);
-    this.overlay.position.set(0, 0, 0.09); this.overlay.renderOrder = 20; this.root.add(this.overlay);
+    this.overlay.scale.setScalar(OS); this.overlay.position.set(0, 0, 0.09 + OVER); this.overlay.renderOrder = 20; this.root.add(this.overlay);
     this.reg(this.overlay, {});
-    this.toastPlane.position.set(0, -0.3, 0.13); this.toastPlane.renderOrder = 60; this.toastPlane.visible = false; this.root.add(this.toastPlane);
+    this.toastPlane.position.set(0, -0.3, 0.13 + OVER); this.toastPlane.renderOrder = 60; this.toastPlane.visible = false; this.root.add(this.toastPlane);
     this.root.add(this.fx.root);
     this.fx.root.traverse((o) => { o.renderOrder = 40; });
 
@@ -156,7 +156,7 @@ export class GameView {
     const d = this.drag; if (!d || d.pid !== pid) return;
     this.lastDragPoint = p.clone();
     const l = this.local(p);
-    if (d.type === "new") { d.moved = true; this.ghost.visible = true; this.ghost.position.set(l.x, l.y, 0.05); }
+    if (d.type === "new") { d.moved = true; this.ghost.visible = true; this.ghost.position.set(l.x, l.y, 0.05 + this.zAt(l.x)); }
     else if (d.type === "move") {
       if (!d.moved && Math.hypot(l.x - d.start.x, l.y - d.start.y) < 0.02) return;
       if (!d.moved) this.game.checkpoint();
@@ -222,15 +222,16 @@ export class GameView {
     const gl = new TextPlane(0.11, 0.05, 1000, { font: `bold ${GLYPH[kind].length > 5 ? 22 : 30}px system-ui, sans-serif`, color: "#0b1020", align: "center", pad: 0 });
     gl.setText(GLYPH[kind]); gl.position.set(0, 0, 0.041); g.add(gl);
     if (withLabel) {
-      const label = new TextPlane(0.3, 0.06, 900, { font: "bold 32px system-ui, sans-serif", align: "center", pad: 4 });
-      label.position.set(0, -0.085, 0.02); g.add(label); g.userData.label = label;
+      const label = new TextPlane(0.3, 0.09, 900, { font: "bold 32px system-ui, sans-serif", align: "center", pad: 4 });
+      label.position.set(0, -0.1, 0.02); g.add(label); g.userData.label = label;
     }
     return g;
   }
 
   /** The request travels into the distance: parts nearer the users sit closer to you, the data tier sits furthest away.
    *  Static, never moves, so it adds depth to read without adding motion. */
-  private zAt(x: number) { return Math.max(0, Math.min(0.2, 0.1 - x * 0.17)); }  // 0.2 m near the users, 0 at the data tier; never behind the backdrop
+  private depthK = 1;  // 1 = full depth; eased to 0 while a panel (results, menu) is open so nothing pokes through it
+  private zAt(x: number) { return this.depthK * Math.max(0, Math.min(0.2, 0.1 - x * 0.17)); }  // 0.2 m near the users, 0 at the data tier; never behind the backdrop
   private portPos(id: string, out: boolean): Vec2 { const p = this.posOf(id); return { x: p.x + (out ? PORT_OUT : PORT_IN), y: p.y }; }
 
   private setSegment(m: Mesh, a: Vector3, b: Vector3, thick = 1) {
@@ -303,7 +304,7 @@ export class GameView {
     for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 0.02 : 0.05; const x = Math.cos(a) * r, y = Math.sin(a) * r; if (i) sh.lineTo(x, y); else sh.moveTo(x, y); }
     sh.closePath();
     const geo = new ShapeGeometry(sh);
-    for (let i = 0; i < 3; i++) { const m = new Mesh(geo, new MeshBasicMaterial({ color: 0x33406e })); m.renderOrder = 22; m.position.set(0.5 + i * 0.12 - 0.12, 0.32, 0.1); m.visible = false; this.root.add(m); this.stars.push(m); }
+    for (let i = 0; i < 3; i++) { const m = new Mesh(geo, new MeshBasicMaterial({ color: 0x33406e })); m.renderOrder = 22; m.position.set((0.5 + i * 0.12 - 0.12) * OS, 0.32 * OS, 0.1 + OVER); m.visible = false; this.root.add(m); this.stars.push(m); }
     const defs: [string, string, () => void][] = [
       ["ov-retry", "RETRY", () => { this.setOverlayVisible(false); this.stop(); }],
       ["ov-page", "MORE", () => { this.ovPage = 1 - this.ovPage; this.renderOverlay(); }],
@@ -313,7 +314,7 @@ export class GameView {
     ];
     defs.forEach(([id, label, fn], i) => {
       const b = this.makeButton(id, label, 0.24, 0.09, fn, "#26346b", "bold 26px system-ui, sans-serif");
-      b.position.set(-0.5 + i * 0.255, -0.32, 0.12); b.renderOrder = 22; this.ovButtons.push(b); this.buttons.delete(id);
+      b.scale.setScalar(OS); b.position.set((-0.5 + i * 0.255) * OS, -0.32 * OS, 0.12 + OVER); b.renderOrder = 22; this.ovButtons.push(b); this.buttons.delete(id);
     });
   }
 
@@ -572,6 +573,7 @@ export class GameView {
   // ---------- per frame ----------
   update(dt: number) {
     this.time += dt;
+    this.depthK += ((this.overlay.visible || this.menu.isOpen ? 0 : 1) - this.depthK) * Math.min(1, dt * 7);
     if (this.dirty) this.sync();
     if (this.shelfDirty) this.rebuildShelf();
     if (this.toastT > 0 && (this.toastT -= dt) <= 0) this.toastPlane.visible = false;
@@ -629,6 +631,7 @@ export class GameView {
       if (s?.promoted) txt += "  PRIMARY";
       if (s?.overloaded) txt += "  OVERLOAD";
       else if (!s && n.kind !== "client") txt += `  cap ${Number.isFinite(n.capacityRps) ? n.capacityRps : ""}`;
+      if (txt.length > 13) txt = txt.replace(/^(\S+)\s+/, "$1\n");  // long labels wrap under the name so neighbours never collide
       if (txt !== v.lastLabel) { v.lastLabel = txt; v.label.setText(txt, { color: s?.down ? "#9aa0b4" : s?.overloaded ? "#ff8080" : "#dfe6ff" }); }
     }
     // wires
@@ -711,6 +714,9 @@ export class GameView {
   }
 }
 
+const OVER = 0;
+/** The results panel is 1.4 m wide at 0.75 m, far too large to read comfortably in a headset: scale it down. */
+const OS = 0.74;
 export function placeBoard(root: Group, heightOffset = 0) {
   root.position.set(0, 0.98 + heightOffset, -0.72);
   root.rotation.x = -0.55;

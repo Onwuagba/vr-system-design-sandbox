@@ -143,8 +143,17 @@ export class GameView {
   private get reduced() { return this.app.settings.reducedMotion; }
   private posOf(id: string) { return this.game.pos[id] ?? { x: 0, y: 0 }; }
 
+  private lastDragPoint?: Vector3;
+  /** XR fallback: the session's "selectend" always fires on release, but the pointer-up may never reach this board (the ray
+   *  often leaves the part that was picked up). End any XR drag at the last known point so a held part always drops. */
+  releaseXRDrag() {
+    const d = this.drag;
+    if (d && d.pid !== -1 && this.lastDragPoint) this.dragEnd(this.lastDragPoint, d.pid);
+  }
+
   private dragMove(p: Vector3, pid: number) {
     const d = this.drag; if (!d || d.pid !== pid) return;
+    this.lastDragPoint = p.clone();
     const l = this.local(p);
     if (d.type === "new") { d.moved = true; this.ghost.visible = true; this.ghost.position.set(l.x, l.y, 0.05); }
     else if (d.type === "move") {
